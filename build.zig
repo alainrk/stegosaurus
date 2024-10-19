@@ -36,6 +36,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    exe.addCSourceFiles(.{ .files = &[_][]const u8{"libs/stb_image.c"}, .flags = .{"-g"} });
+    exe.addCSourceFiles(.{ .files = &[_][]const u8{"libs/stb_image_write.c"}, .flags = .{"-g"} });
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
