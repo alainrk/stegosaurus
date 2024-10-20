@@ -1,7 +1,7 @@
 const std = @import("std");
 const c = @cImport({
-    @cInclude("libs/stb_image.h");
-    @cInclude("libs/stb_image_write.h");
+    @cInclude("stb_image.h");
+    @cInclude("stb_image_write.h");
 });
 
 const Allocator = std.mem.Allocator;
@@ -22,7 +22,7 @@ fn encodeMessage(allocator: Allocator, input_path: []const u8, output_path: []co
     const image_size: usize = @intCast(width * height * channels);
     const output_data = try allocator.alloc(u8, image_size);
     defer allocator.free(output_data);
-    std.mem.copy(u8, output_data, image_data[0..image_size]);
+    std.mem.copyForwards(u8, output_data, image_data[0..image_size]);
 
     const encrypted_message = try encryptMessage(allocator, message, key);
     defer allocator.free(encrypted_message);
@@ -32,18 +32,21 @@ fn encodeMessage(allocator: Allocator, input_path: []const u8, output_path: []co
     const output_path_z = try allocator.dupeZ(u8, output_path);
     defer allocator.free(output_path_z);
 
-    const ext = std.fs.path.extension(output_path);
-    var extMap = 0;
-    if (std.mem.eql(u8, ext, ".jpg") or std.mem.eql(u8, ext, ".jpeg")) extMap = 1;
-    if (std.mem.eql(u8, ext, ".png")) extMap = 2;
+    // TODO: Support jpeg
+    // const ext = std.fs.path.extension(output_path);
+    // var extMap: u8 = 0;
+    // if (std.mem.eql(u8, ext, ".jpg") or std.mem.eql(u8, ext, ".jpeg")) extMap = 1;
+    // if (std.mem.eql(u8, ext, ".png")) extMap = 2;
+    //
+    // if (extMap == 0) return error.UnsupportedImageFormat;
+    //
+    // const success = switch (std.fs.path.extension(output_path)) {
+    //     1 => c.stbi_write_jpg(output_path_z.ptr, width, height, channels, output_data.ptr, 90) != 0,
+    //     2 => c.stbi_write_png(output_path_z.ptr, width, height, channels, output_data.ptr, width * channels) != 0,
+    //     else => return error.UnsupportedImageFormat,
+    // };
 
-    if (extMap == 0) return error.UnsupportedImageFormat;
-
-    const success = switch (std.fs.path.extension(output_path)) {
-        1 => c.stbi_write_jpg(output_path_z.ptr, width, height, channels, output_data.ptr, 90) != 0,
-        2 => c.stbi_write_png(output_path_z.ptr, width, height, channels, output_data.ptr, width * channels) != 0,
-        else => return error.UnsupportedImageFormat,
-    };
+    const success = c.stbi_write_png(output_path_z.ptr, width, height, channels, output_data.ptr, width * channels) != 0;
 
     if (!success) return error.ImageWriteFailed;
 }
@@ -135,7 +138,7 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     if (args.len < 4) {
-        std.debug.print("Usage: {} <encode/decode> <input_file> <output_file> <key> [message]\n", .{args[0]});
+        std.debug.print("Usage: {s} <encode/decode> <input_file> <output_file> <key> [message]\n", .{"stegosaurus"});
         return;
     }
 
@@ -143,6 +146,8 @@ pub fn main() !void {
     const input_file_path = args[2];
     const output_file_path = args[3];
     const key = args[4];
+
+    // std.debug.print("Mode: {s}, Input: {s}, Output: {s}, Key: {s}\n", .{ mode, input_file_path, output_file_path, key });
 
     if (std.mem.eql(u8, mode, "encode")) {
         if (args.len < 6) {
